@@ -49,6 +49,15 @@
             <span class="status-label">TRẠNG THÁI BĂNG TẢI</span>
             <span class="control-feedback" id="control-feedback">Đang chờ kết nối HiveMQ</span>
           </div>
+          <div class="speed-control">
+            <div class="speed-heading"><span class="status-label">TỐC ĐỘ / PWM</span><strong id="selected-speed">255 / 255</strong></div>
+            <div class="speed-options" role="group" aria-label="Chọn mức tốc độ băng tải">
+              <button class="speed-option" type="button" data-speed="0" aria-pressed="false" disabled>0</button>
+              <button class="speed-option" type="button" data-speed="85" aria-pressed="false" disabled>85</button>
+              <button class="speed-option" type="button" data-speed="170" aria-pressed="false" disabled>170</button>
+              <button class="speed-option is-selected" type="button" data-speed="255" aria-pressed="true" disabled>255</button>
+            </div>
+          </div>
           <div class="control-buttons">
             <button class="control-button stop-button" id="stop-button" type="button" disabled>
               <i data-lucide="pause"></i><span>TẠM DỪNG</span>
@@ -60,15 +69,53 @@
         </div>
       </section>
 
+      <section class="operations-section" aria-labelledby="operations-heading">
+        <div class="section-heading compact-heading operations-heading">
+          <div>
+            <p class="eyebrow">01 <span>/</span> LINE STATUS</p>
+            <h2 id="operations-heading">TRẠNG THÁI VẬN HÀNH</h2>
+          </div>
+          <span class="mqtt-state">LIVE STATUS</span>
+        </div>
+        <div class="operations-grid">
+          <div class="machine-status">
+            <div class="status-item conveyor-status">
+              <span class="status-icon"><i data-lucide="move-horizontal"></i></span>
+              <span class="status-copy"><span class="status-label">BĂNG TẢI</span><strong id="conveyor-state">CHƯA RÕ</strong></span>
+            </div>
+            <div class="status-item">
+              <span class="status-icon"><i data-lucide="gauge"></i></span>
+              <span class="status-copy"><span class="status-label">TỐC ĐỘ / PWM</span><strong id="speed-value">--</strong></span>
+            </div>
+            <div class="status-item">
+              <span class="status-icon"><i data-lucide="camera"></i></span>
+              <span class="status-copy"><span class="status-label">CAMERA</span><strong id="camera-state">OFFLINE</strong></span>
+            </div>
+            <div class="status-item">
+              <span class="status-icon"><i data-lucide="activity"></i></span>
+              <span class="status-copy"><span class="status-label">CAM / YOLO FPS</span><strong><span id="cam-fps">--</span><small> / </small><span id="detect-fps">--</span></strong></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="camera-section" aria-labelledby="camera-heading">
         <div class="section-heading camera-heading">
           <div>
-            <p class="eyebrow">01 <span>/</span> MACHINE VISION</p>
+            <p class="eyebrow">02 <span>/</span> MACHINE VISION</p>
             <h1 id="camera-heading">CAMERA GIÁM SÁT</h1>
           </div>
-          <div class="source-switch" role="group" aria-label="Chọn nguồn camera">
-            <button class="source-button is-selected" type="button" data-source="stream" aria-pressed="true">CAMERA</button>
-            <button class="source-button" type="button" data-source="yolo" aria-pressed="false">YOLO</button>
+          <div class="camera-tools">
+            <div class="source-switch" role="group" aria-label="Chọn nguồn camera">
+              <button class="source-button is-selected" type="button" data-source="stream" aria-pressed="true">CAMERA</button>
+              <button class="source-button" type="button" data-source="yolo" aria-pressed="false">YOLO</button>
+            </div>
+            <button class="camera-toggle" id="camera-toggle" type="button" aria-pressed="false" title="Ẩn hình camera trên trang">
+              <i class="toggle-icon-hide" data-lucide="eye-off"></i>
+              <i class="toggle-icon-show" data-lucide="eye" hidden></i>
+              <span class="toggle-hide-label">ẨN HÌNH</span>
+              <span class="toggle-show-label" hidden>HIỆN HÌNH</span>
+            </button>
           </div>
         </div>
 
@@ -93,7 +140,7 @@
       <section class="count-section" aria-labelledby="count-heading">
         <div class="section-heading compact-heading">
           <div>
-            <p class="eyebrow">02 <span>/</span> PRODUCTION COUNT</p>
+            <p class="eyebrow">03 <span>/</span> PRODUCTION COUNT</p>
             <h2 id="count-heading">SẢN LƯỢNG CA HIỆN TẠI</h2>
           </div>
           <span class="updated-at" id="updated-at">CHƯA CÓ DỮ LIỆU</span>
@@ -122,32 +169,28 @@
         </div>
       </section>
 
-      <section class="operations-section" aria-labelledby="operations-heading">
-        <div class="section-heading compact-heading operations-heading">
+      <section class="chart-section" aria-labelledby="chart-heading">
+        <div class="section-heading compact-heading">
           <div>
-            <p class="eyebrow">03 <span>/</span> LINE CONTROL</p>
-            <h2 id="operations-heading">TRẠNG THÁI VẬN HÀNH</h2>
+            <p class="eyebrow">04 <span>/</span> QUALITY MIX</p>
+            <h2 id="chart-heading">CƠ CẤU SẢN PHẨM</h2>
           </div>
-          <span class="mqtt-state">LIVE STATUS</span>
+          <span class="updated-at">TỶ LỆ TRÊN TỔNG SẢN PHẨM</span>
         </div>
-        <div class="operations-grid">
-          <div class="machine-status">
-            <div class="status-item conveyor-status">
-              <span class="status-icon"><i data-lucide="move-horizontal"></i></span>
-              <span class="status-copy"><span class="status-label">BĂNG TẢI</span><strong id="conveyor-state">CHƯA RÕ</strong></span>
-            </div>
-            <div class="status-item">
-              <span class="status-icon"><i data-lucide="gauge"></i></span>
-              <span class="status-copy"><span class="status-label">TỐC ĐỘ / PWM</span><strong id="speed-value">--</strong></span>
-            </div>
-            <div class="status-item">
-              <span class="status-icon"><i data-lucide="camera"></i></span>
-              <span class="status-copy"><span class="status-label">CAMERA</span><strong id="camera-state">OFFLINE</strong></span>
-            </div>
-            <div class="status-item">
-              <span class="status-icon"><i data-lucide="activity"></i></span>
-              <span class="status-copy"><span class="status-label">CAM / YOLO FPS</span><strong><span id="cam-fps">--</span><small> / </small><span id="detect-fps">--</span></strong></span>
-            </div>
+        <div class="chart-panel">
+          <div class="pie-chart" id="quality-pie" role="img" aria-label="Chưa có dữ liệu biểu đồ">
+            <span class="pie-empty-label" id="pie-empty-label">CHƯA CÓ<br>DỮ LIỆU</span>
+          </div>
+          <div class="chart-summary">
+            <span class="status-label">TỔNG ĐÃ KIỂM TRA</span>
+            <strong id="pie-total">0</strong>
+            <span class="chart-unit">CHI TIẾT</span>
+          </div>
+          <div class="chart-legend" aria-label="Chú giải biểu đồ">
+            <div class="legend-row"><span class="legend-dot legend-normal"></span><span class="legend-name">BÌNH THƯỜNG</span><strong id="pie-e0">0 · 0%</strong></div>
+            <div class="legend-row"><span class="legend-dot legend-bearing"></span><span class="legend-name">THIẾU VÒNG BI</span><strong id="pie-e1">0 · 0%</strong></div>
+            <div class="legend-row"><span class="legend-dot legend-chipped"></span><span class="legend-name">SỨT MẺ</span><strong id="pie-e2">0 · 0%</strong></div>
+            <div class="legend-row"><span class="legend-dot legend-stain"></span><span class="legend-name">BẨN / Ố</span><strong id="pie-e3">0 · 0%</strong></div>
           </div>
         </div>
       </section>
