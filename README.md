@@ -126,11 +126,10 @@ Web và ESP32 dùng chung broker/topic/payload sau:
 | Topic điều khiển | `banhrang/conveyor/control` |
 | Payload chạy | `on` |
 | Payload dừng | `off` |
+| Topic tốc độ | `banhrang/conveyor/speed` |
+| Payload tốc độ | `0`, `85`, `170`, hoặc `255` |
+| Topic phản hồi | `banhrang/conveyor/state` |
 
-Sketch nằm tại `esp32_conveyor_mqtt.ino`. Mở file trong Arduino IDE, cài thư viện **PubSubClient** (Nick O'Leary), rồi điền `WIFI_SSID` và `WIFI_PASSWORD` ở đầu file trước khi nạp lên ESP32. Serial Monitor dùng baud `115200`; khi kết nối thành công sẽ hiện `Subscribed to banhrang/conveyor/control`.
+Sketch nằm tại `esp32_conveyor_mqtt.ino`. Mở file trong Arduino IDE, cài thư viện **PubSubClient** (Nick O'Leary), rồi điền `WIFI_SSID` và `WIFI_PASSWORD` ở đầu file trước khi nạp lên ESP32. Serial Monitor dùng baud `115200`; khi kết nối thành công sẽ hiện hai topic điều khiển đã subscribe.
 
-Khi nhận `on`, chương trình đặt GPIO4 ở mức HIGH. Khi nhận `off`, GPIO4 về LOW. GPIO4 cũng được đặt LOW lúc khởi động và khi Wi-Fi/MQTT mất kết nối. Payload khác `on`/`off` sẽ bị bỏ qua.
-
-GPIO4 chỉ là tín hiệu logic 3.3V
-
-## Lưu ý bảo mật
+Khi nhận `on`, chương trình đặt GPIO4 ở mức HIGH. Khi nhận `off`, GPIO4 về LOW. GPIO4 cũng được đặt LOW khi khởi động và khi Wi-Fi/MQTT mất kết nối. Bốn nút tốc độ gửi PWM tới GPIO5, tương ứng mức `0/85/170/255` trên thang 8-bit `0-255`; PWM khởi động ở `0`. ESP32 gửi trạng thái giữ lại (retained) lên topic `banhrang/conveyor/state`, ví dụ `{"conveyor_on":true,"speed":170}`, để web cập nhật trạng thái băng tải và mức tốc độ. Payload không hợp lệ sẽ bị bỏ qua.
