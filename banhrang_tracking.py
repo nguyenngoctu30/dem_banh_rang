@@ -27,9 +27,6 @@ from PyQt5.QtGui import QFont, QPainter, QColor, QPen, QBrush, QLinearGradient, 
 
 from ultralytics import YOLO
 
-# ==============================================================================
-# CẤU HÌNH — SỬA CÁC GIÁ TRỊ NÀY CHO PHÙ HỢP MÁY CỦA BẠN
-# ==============================================================================
 
 CAMERA_INDEX    = 0
 API_HOST        = "0.0.0.0"
@@ -37,7 +34,7 @@ API_PORT        = 8000
 MODEL_PATH      = r"C:\BANH_RANG_CONG_NGHIEP\mo_hinh_1-20260501T133616Z-3-001\run_v11\weights\best.pt"
 YOLO_CONF       = 0.5
 YOLO_IOU        = 0.45
-YOLO_INPUT_SIZE = (640, 480)   # (w,h) — đặt None để dùng kích thước gốc
+YOLO_INPUT_SIZE = (640, 480)   
 
 SERIAL_PORT  = "COM6"
 SERIAL_BAUD  = 9600
@@ -47,7 +44,6 @@ FIREBASE_KEY = r"C:\BANH_RANG_CONG_NGHIEP\key.json"
 FIREBASE_URL = "https://hethongnhung-a17f3-default-rtdb.asia-southeast1.firebasedatabase.app/"
 USE_FIREBASE = True
 
-# Tên nhãn YOLO (phải khớp với class_banhrang.txt)
 LABEL_GEAR       = "gear"
 LABEL_NO_BEARING = "gear_no_bearing"
 LABEL_CHIPPED    = "defect_chipped"
@@ -64,9 +60,6 @@ LINE_THICKNESS = 3
 CROSS_MARGIN   = 5
 COUNT_COOLDOWN = 1.5
 
-# ==============================================================================
-# MÀU SẮC UI
-# ==============================================================================
 
 BG       = "#0D0F14"
 PANEL    = "#13161E"
@@ -143,9 +136,6 @@ class TrackingHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-# ==============================================================================
-# CAMERA THREAD
-# ==============================================================================
 
 class CameraThread(QThread):
     def __init__(self, index: int):
@@ -193,10 +183,6 @@ class CameraThread(QThread):
     def is_opened(self) -> bool:
         return self._cap is not None and self._cap.isOpened()
 
-
-# ==============================================================================
-# DETECT THREAD (YOLO)
-# ==============================================================================
 
 class DetectResult:
     __slots__ = ("annotated", "tracked_boxes", "orig_frame")
@@ -322,10 +308,6 @@ class DetectThread(QThread):
         return tracked_boxes
 
 
-# ==============================================================================
-# VIRTUAL LINE TRACKER
-# ==============================================================================
-
 class VirtualLineTracker:
     def __init__(self, line_x_ratio: float = 0.5):
         self.line_x_ratio       = line_x_ratio
@@ -401,13 +383,6 @@ class VirtualLineTracker:
     def clear(self):
         self._tracks.clear()
 
-
-# ==============================================================================
-# KALMAN TRACKER — bám vật thể khi YOLO miss frame (vật đang di chuyển)
-# ==============================================================================
-# Mỗi KalmanTrack theo dõi 1 vật với state [cx, cy, vx, vy].
-# Khi YOLO không detect được (vật đang di chuyển nhanh), Kalman vẫn dự đoán
-# vị trí tiếp theo → VirtualLineTracker không bị mất track → đếm chính xác.
 
 class _KalmanTrack:
     """Kalman filter cho 1 đối tượng. State: [cx, cy, vx, vy]."""
