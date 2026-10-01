@@ -15,8 +15,9 @@ window.APP_CONFIG = {
     password: "",
     clientIdPrefix: "gear-web",
     controlTopic: "banhrang/conveyor/control",
+    speedTopic: "banhrang/conveyor/speed",
     payloadOn: "on",
     payloadOff: "off",
-    stateTopic: ""
+    stateTopic: "banhrang/conveyor/state"
   }
 };
