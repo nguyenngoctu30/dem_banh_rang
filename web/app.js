@@ -7,9 +7,11 @@
   const numberFormat = new Intl.NumberFormat("vi-VN");
   const state = {
     source: "stream",
+    cameraHidden: false,
     mqttClient: null,
     reportedConveyor: null,
     lastCommand: null,
+    selectedSpeed: 255,
     mqttConnected: false,
     cameraLoaded: false
   };
@@ -29,11 +31,16 @@
     cameraLive: document.querySelector("#camera-live"),
     cameraSourceLabel: document.querySelector("#camera-source-label"),
     cameraResolution: document.querySelector("#camera-resolution"),
+    cameraToggle: document.querySelector("#camera-toggle"),
     cameraState: document.querySelector("#camera-state"),
     camFps: document.querySelector("#cam-fps"),
     detectFps: document.querySelector("#detect-fps"),
     conveyorState: document.querySelector("#conveyor-state"),
     speedValue: document.querySelector("#speed-value"),
+    selectedSpeed: document.querySelector("#selected-speed"),
+    qualityPie: document.querySelector("#quality-pie"),
+    pieEmptyLabel: document.querySelector("#pie-empty-label"),
+    pieTotal: document.querySelector("#pie-total"),
     controlFeedback: document.querySelector("#control-feedback"),
     stopButton: document.querySelector("#stop-button"),
     runButton: document.querySelector("#run-button")
@@ -68,6 +75,10 @@
   function updateCameraSource() {
     const isYolo = state.source === "yolo";
     elements.cameraSourceLabel.textContent = isYolo ? "YOLO INFERENCE" : "CAMERA RAW";
+    if (state.cameraHidden) {
+      showCameraPlaceholder("HÌNH CAMERA ĐANG ẨN", "Chỉ ẩn trên trang web; camera vẫn hoạt động");
+      return;
+    }
     if (!apiBase) {
       showCameraPlaceholder("ĐANG CHỜ CẤU HÌNH API", "Thêm địa chỉ API trong web/config.js");
       return;
@@ -81,6 +92,72 @@
     if (elements.cameraFeed.src === nextUrl && !elements.cameraFeed.hidden) return;
     showCameraPlaceholder("ĐANG KẾT NỐI CAMERA", "Đang mở luồng hình ảnh...");
     elements.cameraFeed.src = nextUrl;
+  }
+
+  function setCameraHidden(hidden) {
+    state.cameraHidden = hidden;
+    elements.cameraToggle.setAttribute("aria-pressed", String(hidden));
+    elements.cameraToggle.title = hidden ? "Hiện hình camera trên trang" : "Ẩn hình camera trên trang";
+    elements.cameraToggle.querySelector(".toggle-icon-hide").hidden = hidden;
+    elements.cameraToggle.querySelector(".toggle-icon-show").hidden = !hidden;
+    elements.cameraToggle.querySelector(".toggle-hide-label").hidden = hidden;
+    elements.cameraToggle.querySelector(".toggle-show-label").hidden = !hidden;
+
+    if (hidden) {
+      elements.cameraFeed.removeAttribute("src");
+      showCameraPlaceholder("HÌNH CAMERA ĐANG ẨN", "Chỉ ẩn trên trang web; camera vẫn hoạt động");
+    } else {
+      updateCameraSource();
+    }
+  }
+
+  function updatePieChart(data) {
+    const total = Math.max(0, Number(data.self_total) || 0);
+    const counts = [
+      Math.max(0, Number(data.self_e0_count) || 0),
+      Math.max(0, Number(data.self_e1_count) || 0),
+      Math.max(0, Number(data.self_e2_count) || 0),
+      Math.max(0, Number(data.self_e3_count) || 0)
+    ];
+    const colors = ["var(--mint)", "var(--amber)", "var(--orange)", "#9b7280"];
+    const ids = ["#pie-e0", "#pie-e1", "#pie-e2", "#pie-e3"];
+    elements.pieTotal.textContent = formatCount(total);
+
+    counts.forEach((count, index) => {
+      const percentage = total > 0 ? (count / total) * 100 : 0;
+      document.querySelector(ids[index]).textContent = `${formatCount(count)} · ${percentage.toFixed(1)}%`;
+    });
+
+    if (total === 0) {
+      elements.qualityPie.style.background = "var(--line-soft)";
+      elements.pieEmptyLabel.hidden = false;
+      elements.qualityPie.setAttribute("aria-label", "Chưa có dữ liệu biểu đồ");
+      return;
+    }
+
+    let cursor = 0;
+    const slices = counts.map((count, index) => {
+      const start = cursor;
+      cursor = Math.min(100, cursor + (count / total) * 100);
+      return cursor > start ? `${colors[index]} ${start}% ${cursor}%` : null;
+    }).filter(Boolean);
+    if (cursor < 100) slices.push(`var(--line-soft) ${cursor}% 100%`);
+    elements.qualityPie.style.background = `conic-gradient(${slices.join(", ")})`;
+    elements.pieEmptyLabel.hidden = true;
+    elements.qualityPie.setAttribute("aria-label", `Cơ cấu ${formatCount(total)} sản phẩm: bình thường ${formatCount(counts[0])}, thiếu vòng bi ${formatCount(counts[1])}, sứt mẻ ${formatCount(counts[2])}, bẩn hoặc ố ${formatCount(counts[3])}`);
+  }
+
+  function setSelectedSpeed(value) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return;
+    state.selectedSpeed = Math.max(0, Math.min(255, Math.round(parsed)));
+    elements.selectedSpeed.textContent = `${state.selectedSpeed} / 255`;
+    elements.speedValue.textContent = String(state.selectedSpeed);
+    document.querySelectorAll(".speed-option").forEach((button) => {
+      const selected = Number(button.dataset.speed) === state.selectedSpeed;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
   }
 
   async function pollStatus() {
@@ -100,9 +177,10 @@
       document.querySelector("#count-e1").textContent = formatCount(data.self_e1_count);
       document.querySelector("#count-e2").textContent = formatCount(data.self_e2_count);
       document.querySelector("#count-e3").textContent = formatCount(data.self_e3_count);
+      updatePieChart(data);
       elements.camFps.textContent = formatFps(data.cam_fps);
       elements.detectFps.textContent = formatFps(data.detect_fps);
-      if (typeof data.speed === "number") elements.speedValue.textContent = String(data.speed);
+      if (typeof data.speed === "number") setSelectedSpeed(data.speed);
       if (typeof data.conveyor_on === "boolean" && !mqttConfig.stateTopic) {
         state.reportedConveyor = data.conveyor_on;
       }
@@ -110,7 +188,7 @@
       elements.cameraState.textContent = data.camera_running ? "ONLINE" : "OFFLINE";
       elements.cameraState.dataset.state = data.camera_running ? "online" : "offline";
       elements.updatedAt.textContent = `CẬP NHẬT ${new Date().toLocaleTimeString("vi-VN", { hour12: false })}`;
-      if (!data.camera_running && !state.cameraLoaded) {
+      if (!state.cameraHidden && !data.camera_running && !state.cameraLoaded) {
         showCameraPlaceholder("CAMERA ĐANG TẮT", "Bật camera trong ứng dụng theo dõi");
       }
     } catch (error) {
@@ -118,7 +196,7 @@
       elements.updatedAt.textContent = "KHÔNG NHẬN ĐƯỢC DỮ LIỆU";
       elements.cameraState.textContent = "OFFLINE";
       elements.cameraState.dataset.state = "offline";
-      if (!state.cameraLoaded) {
+      if (!state.cameraHidden && !state.cameraLoaded) {
         showCameraPlaceholder("KHÔNG KẾT NỐI ĐƯỢC API", "Kiểm tra địa chỉ API và kết nối mạng");
       }
     }
@@ -148,12 +226,17 @@
   function setMqttButtonsEnabled(enabled) {
     elements.stopButton.disabled = !enabled;
     elements.runButton.disabled = !enabled;
+    document.querySelectorAll(".speed-option").forEach((button) => {
+      button.disabled = !enabled;
+    });
   }
 
   function isMqttConfigured() {
     return mqttConfig.brokerUrl &&
       !mqttConfig.brokerUrl.includes("YOUR_CLUSTER_ID") &&
-      mqttConfig.controlTopic;
+      mqttConfig.controlTopic &&
+      mqttConfig.speedTopic &&
+      mqttConfig.stateTopic;
   }
 
   function connectMqtt() {
@@ -170,7 +253,7 @@
 
     const clientId = `${mqttConfig.clientIdPrefix || "gear-web"}-${Math.random().toString(16).slice(2, 10)}`;
     setMqttState("unset", "MQTT ĐANG KẾT NỐI");
-    elements.controlFeedback.textContent = "Đang kết nối HiveMQ Cloud...";
+    elements.controlFeedback.textContent = "Đang kết nối HiveMQ...";
     const mqttOptions = {
       clientId,
       clean: true,
@@ -188,7 +271,9 @@
       setMqttButtonsEnabled(true);
       elements.controlFeedback.textContent = "Sẵn sàng gửi lệnh băng tải";
       if (mqttConfig.stateTopic) {
-        state.mqttClient.subscribe(mqttConfig.stateTopic, { qos: 0 });
+        state.mqttClient.subscribe(mqttConfig.stateTopic, { qos: 0 }, (error) => {
+          if (error) elements.controlFeedback.textContent = `Không đăng ký được state topic: ${error.message}`;
+        });
       }
     });
     state.mqttClient.on("reconnect", () => {
@@ -224,7 +309,7 @@
       } else if (typeof parsed.state === "string") {
         value = parsed.state.toLowerCase();
       }
-      if (Number.isFinite(Number(parsed.speed))) elements.speedValue.textContent = String(parsed.speed);
+      if (Number.isFinite(Number(parsed.speed))) setSelectedSpeed(parsed.speed);
     } catch (_) {
     }
     if (["on", "running", "true", "1"].includes(value)) state.reportedConveyor = true;
@@ -247,6 +332,17 @@
     });
   }
 
+  function publishSpeed(speed) {
+    if (!state.mqttConnected || !state.mqttClient) return;
+    state.mqttClient.publish(mqttConfig.speedTopic, String(speed), { qos: 0, retain: false }, (error) => {
+      if (error) {
+        elements.controlFeedback.textContent = `Không gửi được tốc độ: ${error.message}`;
+        return;
+      }
+      elements.controlFeedback.textContent = `Đã gửi PWM ${speed} • chờ ESP32 xác nhận`;
+    });
+  }
+
   document.querySelectorAll(".source-button").forEach((button) => {
     button.addEventListener("click", () => {
       if (button.dataset.source === state.source) return;
@@ -261,6 +357,7 @@
   });
 
   elements.cameraFeed.addEventListener("load", () => {
+    if (state.cameraHidden) return;
     state.cameraLoaded = true;
     elements.cameraFeed.hidden = false;
     elements.cameraPlaceholder.hidden = true;
@@ -268,10 +365,19 @@
     elements.cameraResolution.textContent = state.source === "yolo" ? "YOLO STREAM" : "CAMERA STREAM";
   });
   elements.cameraFeed.addEventListener("error", () => {
+    if (state.cameraHidden) return;
     showCameraPlaceholder("KHÔNG NHẬN ĐƯỢC HÌNH ẢNH", "Kiểm tra trạng thái camera và đường dẫn stream");
   });
+  elements.cameraToggle.addEventListener("click", () => setCameraHidden(!state.cameraHidden));
   elements.stopButton.addEventListener("click", () => publishCommand("off"));
   elements.runButton.addEventListener("click", () => publishCommand("on"));
+  document.querySelectorAll(".speed-option").forEach((button) => {
+    button.addEventListener("click", () => {
+      const speed = Number(button.dataset.speed);
+      setSelectedSpeed(speed);
+      publishSpeed(speed);
+    });
+  });
 
   function updateClock() {
     elements.clock.textContent = new Date().toLocaleTimeString("vi-VN", { hour12: false });
