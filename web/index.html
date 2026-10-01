@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141710">
+  <title>Giám sát bánh răng | Line 01</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="config.js"></script>
+  <script defer src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script defer src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Trang giám sát bánh răng">
+        <span class="brand-mark"><i data-lucide="cog"></i></span>
+        <span class="brand-copy">
+          <span class="brand-kicker">INSPECTION SYSTEM <span> / </span> LINE 01</span>
+          <span class="brand-title">GIÁM SÁT BÁNH RĂNG</span>
+        </span>
+      </a>
+      <div class="topbar-right">
+        <span class="system-clock" id="system-clock">--:--:--</span>
+        <span class="connection-pill" id="api-indicator" data-state="unset">
+          <span class="signal-dot"></span><span id="api-label">API CHƯA CẤU HÌNH</span>
+        </span>
+        <span class="connection-pill mqtt-pill" id="mqtt-indicator" data-state="unset">
+          <span class="signal-dot"></span><span id="mqtt-label">MQTT CHƯA CẤU HÌNH</span>
+        </span>
+      </div>
+    </header>
+
+    <main id="top" class="dashboard">
+      <section class="control-section" aria-labelledby="control-heading">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">00 <span>/</span> REMOTE CONTROL</p>
+            <h2 id="control-heading">ĐIỀU KHIỂN BĂNG TẢI</h2>
+          </div>
+          <span class="mqtt-state" id="mqtt-state">MQTT CHƯA CẤU HÌNH</span>
+        </div>
+        <div class="control-panel">
+          <div class="control-copy">
+            <span class="status-label">TRẠNG THÁI BĂNG TẢI</span>
+            <span class="control-feedback" id="control-feedback">Đang chờ kết nối HiveMQ</span>
+          </div>
+          <div class="control-buttons">
+            <button class="control-button stop-button" id="stop-button" type="button" disabled>
+              <i data-lucide="pause"></i><span>TẠM DỪNG</span>
+            </button>
+            <button class="control-button run-button" id="run-button" type="button" disabled>
+              <i data-lucide="play"></i><span>TIẾP TỤC</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="camera-section" aria-labelledby="camera-heading">
+        <div class="section-heading camera-heading">
+          <div>
+            <p class="eyebrow">01 <span>/</span> MACHINE VISION</p>
+            <h1 id="camera-heading">CAMERA GIÁM SÁT</h1>
+          </div>
+          <div class="source-switch" role="group" aria-label="Chọn nguồn camera">
+            <button class="source-button is-selected" type="button" data-source="stream" aria-pressed="true">CAMERA</button>
+            <button class="source-button" type="button" data-source="yolo" aria-pressed="false">YOLO</button>
+          </div>
+        </div>
+
+        <div class="camera-frame" id="camera-frame">
+          <img id="camera-feed" class="camera-feed" alt="Luồng camera kiểm tra bánh răng" hidden>
+          <div class="camera-placeholder" id="camera-placeholder">
+            <div class="placeholder-mark"><i data-lucide="aperture"></i></div>
+            <p class="placeholder-title" id="camera-message">ĐANG CHỜ KẾT NỐI CAMERA</p>
+            <span class="placeholder-detail" id="camera-detail">Cấu hình API trong web/config.js</span>
+          </div>
+          <div class="camera-overlay camera-overlay-top">
+            <span class="live-tag" id="camera-live"><span class="live-dot"></span> LIVE</span>
+            <span class="camera-source-label" id="camera-source-label">CAMERA RAW</span>
+          </div>
+          <div class="camera-overlay camera-overlay-bottom">
+            <span>GEAR INSPECTION <b>•</b> LINE 01</span>
+            <span id="camera-resolution">NO SIGNAL</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="count-section" aria-labelledby="count-heading">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">02 <span>/</span> PRODUCTION COUNT</p>
+            <h2 id="count-heading">SẢN LƯỢNG CA HIỆN TẠI</h2>
+          </div>
+          <span class="updated-at" id="updated-at">CHƯA CÓ DỮ LIỆU</span>
+        </div>
+        <div class="primary-counts">
+          <article class="count-cell count-total">
+            <span class="count-label">TỔNG SẢN PHẨM</span>
+            <strong class="count-value" id="count-total">0</strong>
+            <span class="count-unit">PCS</span>
+          </article>
+          <article class="count-cell count-normal">
+            <span class="count-label">BÌNH THƯỜNG</span>
+            <strong class="count-value" id="count-normal">0</strong>
+            <span class="count-unit">PASS</span>
+          </article>
+          <article class="count-cell count-defect">
+            <span class="count-label">TỔNG LỖI</span>
+            <strong class="count-value" id="count-defects">0</strong>
+            <span class="count-unit">FAIL</span>
+          </article>
+        </div>
+        <div class="defect-counts" aria-label="Số lượng từng loại lỗi">
+          <div class="defect-cell"><span class="defect-mark bearing-mark"></span><span class="defect-name">THIẾU VÒNG BI</span><strong id="count-e1">0</strong></div>
+          <div class="defect-cell"><span class="defect-mark chipped-mark"></span><span class="defect-name">SỨT MẺ</span><strong id="count-e2">0</strong></div>
+          <div class="defect-cell"><span class="defect-mark stain-mark"></span><span class="defect-name">BẨN / Ố</span><strong id="count-e3">0</strong></div>
+        </div>
+      </section>
+
+      <section class="operations-section" aria-labelledby="operations-heading">
+        <div class="section-heading compact-heading operations-heading">
+          <div>
+            <p class="eyebrow">03 <span>/</span> LINE CONTROL</p>
+            <h2 id="operations-heading">TRẠNG THÁI VẬN HÀNH</h2>
+          </div>
+          <span class="mqtt-state">LIVE STATUS</span>
+        </div>
+        <div class="operations-grid">
+          <div class="machine-status">
+            <div class="status-item conveyor-status">
+              <span class="status-icon"><i data-lucide="move-horizontal"></i></span>
+              <span class="status-copy"><span class="status-label">BĂNG TẢI</span><strong id="conveyor-state">CHƯA RÕ</strong></span>
+            </div>
+            <div class="status-item">
+              <span class="status-icon"><i data-lucide="gauge"></i></span>
+              <span class="status-copy"><span class="status-label">TỐC ĐỘ / PWM</span><strong id="speed-value">--</strong></span>
+            </div>
+            <div class="status-item">
+              <span class="status-icon"><i data-lucide="camera"></i></span>
+              <span class="status-copy"><span class="status-label">CAMERA</span><strong id="camera-state">OFFLINE</strong></span>
+            </div>
+            <div class="status-item">
+              <span class="status-icon"><i data-lucide="activity"></i></span>
+              <span class="status-copy"><span class="status-label">CAM / YOLO FPS</span><strong><span id="cam-fps">--</span><small> / </small><span id="detect-fps">--</span></strong></span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <footer class="page-footer"><span>GEAR QUALITY CONTROL</span><span>WEB CONSOLE <b>•</b> V1.0</span></footer>
+    </main>
+  </div>
+</body>
+</html>
