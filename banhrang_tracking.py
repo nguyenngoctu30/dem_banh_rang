@@ -1,5 +1,6 @@
 import sys
 import cv2
+from ultralytics import YOLO
 import numpy as np
 import serial
 import serial.tools.list_ports
@@ -25,13 +26,13 @@ from PyQt5.QtCore import (Qt, QTimer, QPropertyAnimation, QEasingCurve,
                            pyqtProperty, QThread, pyqtSignal, QMutex, QMutexLocker)
 from PyQt5.QtGui import QFont, QPainter, QColor, QPen, QBrush, QLinearGradient, QImage, QPixmap
 
-from ultralytics import YOLO
 
 
-CAMERA_INDEX    = 0
+
+CAMERA_INDEX    = 1
 API_HOST        = "0.0.0.0"
 API_PORT        = 8000
-MODEL_PATH      = r"C:\BANH_RANG_CONG_NGHIEP\mo_hinh_1-20260501T133616Z-3-001\run_v11\weights\best.pt"
+MODEL_PATH      = r"C:\Users\ADMIN\Downloads\run_v11\weights\best.pt"
 YOLO_CONF       = 0.5
 YOLO_IOU        = 0.45
 YOLO_INPUT_SIZE = (640, 480)   
@@ -40,8 +41,8 @@ SERIAL_PORT  = "COM6"
 SERIAL_BAUD  = 9600
 USE_SERIAL   = True
 
-FIREBASE_KEY = r"C:\BANH_RANG_CONG_NGHIEP\key.json"
-FIREBASE_URL = "https://hethongnhung-a17f3-default-rtdb.asia-southeast1.firebasedatabase.app/"
+FIREBASE_KEY = r"C:\Users\ADMIN\OneDrive\Desktop\server\key.json"
+FIREBASE_URL = "https://banhrang-congnghiep-default-rtdb.asia-southeast1.firebasedatabase.app/"
 USE_FIREBASE = True
 
 LABEL_GEAR       = "gear"
