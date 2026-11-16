@@ -4,6 +4,8 @@
   const mqttConfig = config.mqtt || {};
   const apiBase = (apiConfig.baseUrl || "").trim().replace(/\/+$/, "");
   const paths = apiConfig.paths || {};
+  // Header bat buoc de ngrok ban mien phi khong tra ve trang canh bao HTML (trang do khong co header CORS)
+  const apiHeaders = { "ngrok-skip-browser-warning": "true", ...(apiConfig.headers || {}) };
   const numberFormat = new Intl.NumberFormat("vi-VN");
   const state = {
     source: "stream",
@@ -13,7 +15,10 @@
     lastCommand: null,
     selectedSpeed: 255,
     mqttConnected: false,
-    cameraLoaded: false
+    cameraLoaded: false,
+    streamUrl: null,
+    streamController: null,
+    frameObjectUrl: null
   };
 
   const elements = {
@@ -89,9 +94,80 @@
       return;
     }
     const nextUrl = `${apiBase}${path}`;
-    if (elements.cameraFeed.src === nextUrl && !elements.cameraFeed.hidden) return;
+    if (state.streamUrl === nextUrl && state.streamController) return;
     showCameraPlaceholder("ĐANG KẾT NỐI CAMERA", "Đang mở luồng hình ảnh...");
-    elements.cameraFeed.src = nextUrl;
+    startCameraStream(nextUrl);
+  }
+
+  function stopCameraStream() {
+    if (state.streamController) state.streamController.abort();
+    state.streamController = null;
+    state.streamUrl = null;
+    if (state.frameObjectUrl) {
+      URL.revokeObjectURL(state.frameObjectUrl);
+      state.frameObjectUrl = null;
+    }
+    elements.cameraFeed.removeAttribute("src");
+  }
+
+  function indexOfBytes(buffer, a, b, from) {
+    for (let i = from; i < buffer.length - 1; i += 1) {
+      if (buffer[i] === a && buffer[i + 1] === b) return i;
+    }
+    return -1;
+  }
+
+  function showFrame(bytes) {
+    const nextObjectUrl = URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+    const previous = state.frameObjectUrl;
+    state.frameObjectUrl = nextObjectUrl;
+    elements.cameraFeed.src = nextObjectUrl;
+    if (previous) URL.revokeObjectURL(previous);
+  }
+
+  // Doc luong MJPEG bang fetch (de gui duoc header ngrok), tach tung anh JPEG (FFD8...FFD9)
+  async function startCameraStream(url) {
+    stopCameraStream();
+    const controller = new AbortController();
+    state.streamController = controller;
+    state.streamUrl = url;
+    try {
+      const response = await fetch(url, { headers: apiHeaders, cache: "no-store", signal: controller.signal });
+      if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
+      const reader = response.body.getReader();
+      let buffer = new Uint8Array(0);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const merged = new Uint8Array(buffer.length + value.length);
+        merged.set(buffer, 0);
+        merged.set(value, buffer.length);
+        buffer = merged;
+        let start = indexOfBytes(buffer, 0xff, 0xd8, 0);
+        while (start !== -1) {
+          const end = indexOfBytes(buffer, 0xff, 0xd9, start + 2);
+          if (end === -1) break;
+          showFrame(buffer.slice(start, end + 2));
+          buffer = buffer.slice(end + 2);
+          start = indexOfBytes(buffer, 0xff, 0xd8, 0);
+        }
+        if (start === -1 && buffer.length > 2) buffer = buffer.slice(-1);
+        if (buffer.length > 4 * 1024 * 1024) buffer = new Uint8Array(0);
+      }
+      throw new Error("Stream ended");
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      if (state.streamController === controller) {
+        state.streamController = null;
+        state.streamUrl = null;
+      }
+      if (!state.cameraHidden) {
+        showCameraPlaceholder("KHÔNG NHẬN ĐƯỢC HÌNH ẢNH", "Kiểm tra trạng thái camera và đường dẫn stream");
+        window.setTimeout(() => {
+          if (!state.cameraHidden && !state.streamController) updateCameraSource();
+        }, 3000);
+      }
+    }
   }
 
   function setCameraHidden(hidden) {
@@ -104,7 +180,7 @@
     elements.cameraToggle.querySelector(".toggle-show-label").hidden = !hidden;
 
     if (hidden) {
-      elements.cameraFeed.removeAttribute("src");
+      stopCameraStream();
       showCameraPlaceholder("HÌNH CAMERA ĐANG ẨN", "Chỉ ẩn trên trang web; camera vẫn hoạt động");
     } else {
       updateCameraSource();
@@ -167,7 +243,7 @@
       return;
     }
     try {
-      const response = await fetch(`${apiBase}${paths.status}`, { cache: "no-store" });
+      const response = await fetch(`${apiBase}${paths.status}`, { cache: "no-store", headers: apiHeaders });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       setApiState("online", "API ONLINE");
