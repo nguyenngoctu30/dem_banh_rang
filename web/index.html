@@ -36,6 +36,13 @@
     </header>
 
     <main id="top" class="dashboard">
+      <form class="api-bar" id="api-form" autocomplete="off" novalidate>
+        <label class="api-bar-label status-label" for="api-input">LINK BACKEND</label>
+        <input class="api-input" id="api-input" type="text" inputmode="url" spellcheck="false" placeholder="https://xxxx.ngrok-free.dev">
+        <button class="api-save" type="submit">KẾT NỐI</button>
+        <span class="api-bar-hint" id="api-hint">Dán link ngrok của máy chạy backend, rồi bấm KẾT NỐI</span>
+      </form>
+
       <section class="control-section" aria-labelledby="control-heading">
         <div class="section-heading compact-heading">
           <div>
@@ -124,7 +131,7 @@
           <div class="camera-placeholder" id="camera-placeholder">
             <div class="placeholder-mark"><i data-lucide="aperture"></i></div>
             <p class="placeholder-title" id="camera-message">ĐANG CHỜ KẾT NỐI CAMERA</p>
-            <span class="placeholder-detail" id="camera-detail">Cấu hình API trong web/config.js</span>
+            <span class="placeholder-detail" id="camera-detail">Nhập link backend ở ô phía trên</span>
           </div>
           <div class="camera-overlay camera-overlay-top">
             <span class="live-tag" id="camera-live"><span class="live-dot"></span> LIVE</span>
