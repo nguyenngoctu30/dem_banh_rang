@@ -2,7 +2,42 @@
   const config = window.APP_CONFIG || {};
   const apiConfig = config.api || {};
   const mqttConfig = config.mqtt || {};
-  const apiBase = (apiConfig.baseUrl || "").trim().replace(/\/+$/, "");
+  const API_STORAGE_KEY = "gear-web-api-base";
+
+  // Chuan hoa link: them https:// neu thieu, bo path va dau "/" cuoi. Tra ve "" neu khong hop le.
+  function normalizeBaseUrl(raw) {
+    let value = String(raw || "").trim();
+    if (!value) return "";
+    if (!/^https?:\/\//i.test(value)) value = `https://${value}`;
+    try {
+      return new URL(value).origin;
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function loadSavedApiBase() {
+    try {
+      return window.localStorage.getItem(API_STORAGE_KEY) || "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function saveApiBase(value) {
+    try {
+      if (value) window.localStorage.setItem(API_STORAGE_KEY, value);
+      else window.localStorage.removeItem(API_STORAGE_KEY);
+    } catch (_) {
+    }
+  }
+
+  // Uu tien: ?api=... tren URL > link da luu tren trinh duyet > config.js (neu co)
+  let apiBase = normalizeBaseUrl(
+    new URLSearchParams(window.location.search).get("api") ||
+    loadSavedApiBase() ||
+    apiConfig.baseUrl
+  );
   const paths = apiConfig.paths || {};
   // Header bat buoc de ngrok ban mien phi khong tra ve trang canh bao HTML (trang do khong co header CORS)
   const apiHeaders = { "ngrok-skip-browser-warning": "true", ...(apiConfig.headers || {}) };
@@ -22,6 +57,9 @@
   };
 
   const elements = {
+    apiForm: document.querySelector("#api-form"),
+    apiInput: document.querySelector("#api-input"),
+    apiHint: document.querySelector("#api-hint"),
     clock: document.querySelector("#system-clock"),
     apiIndicator: document.querySelector("#api-indicator"),
     apiLabel: document.querySelector("#api-label"),
@@ -85,7 +123,7 @@
       return;
     }
     if (!apiBase) {
-      showCameraPlaceholder("ĐANG CHỜ CẤU HÌNH API", "Thêm địa chỉ API trong web/config.js");
+      showCameraPlaceholder("ĐANG CHỜ CẤU HÌNH API", "Nhập link backend ở ô phía trên");
       return;
     }
     const path = isYolo ? paths.yolo : paths.camera;
@@ -242,10 +280,12 @@
       elements.updatedAt.textContent = "CHƯA CÓ DỮ LIỆU";
       return;
     }
+    const requestBase = apiBase;
     try {
-      const response = await fetch(`${apiBase}${paths.status}`, { cache: "no-store", headers: apiHeaders });
+      const response = await fetch(`${requestBase}${paths.status}`, { cache: "no-store", headers: apiHeaders });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
+      if (requestBase !== apiBase) return;
       setApiState("online", "API ONLINE");
       document.querySelector("#count-total").textContent = formatCount(data.self_total);
       document.querySelector("#count-normal").textContent = formatCount(data.self_e0_count);
@@ -268,6 +308,7 @@
         showCameraPlaceholder("CAMERA ĐANG TẮT", "Bật camera trong ứng dụng theo dõi");
       }
     } catch (error) {
+      if (requestBase !== apiBase) return;
       setApiState("offline", "API OFFLINE");
       elements.updatedAt.textContent = "KHÔNG NHẬN ĐƯỢC DỮ LIỆU";
       elements.cameraState.textContent = "OFFLINE";
@@ -444,6 +485,27 @@
     if (state.cameraHidden) return;
     showCameraPlaceholder("KHÔNG NHẬN ĐƯỢC HÌNH ẢNH", "Kiểm tra trạng thái camera và đường dẫn stream");
   });
+  elements.apiInput.value = apiBase;
+  elements.apiForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const raw = elements.apiInput.value;
+    const next = normalizeBaseUrl(raw);
+    if (raw.trim() && !next) {
+      elements.apiHint.dataset.state = "error";
+      elements.apiHint.textContent = "Link không hợp lệ, ví dụ: https://xxxx.ngrok-free.dev";
+      return;
+    }
+    delete elements.apiHint.dataset.state;
+    apiBase = next;
+    saveApiBase(next);
+    elements.apiInput.value = next;
+    elements.apiHint.textContent = next ? `Đang dùng backend: ${next}` : "Đã xóa link backend";
+    stopCameraStream();
+    updateCameraSource();
+    pollStatus();
+  });
+  if (apiBase) elements.apiHint.textContent = `Đang dùng backend: ${apiBase}`;
+
   elements.cameraToggle.addEventListener("click", () => setCameraHidden(!state.cameraHidden));
   elements.stopButton.addEventListener("click", () => publishCommand("off"));
   elements.runButton.addEventListener("click", () => publishCommand("on"));
